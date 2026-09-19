@@ -14,6 +14,7 @@ GitHub Pages 发布后地址：`https://wadany.github.io/mianshi/`
 | `W` / `空格` | 跳跃 |
 | 鼠标移动 | 瞄准 |
 | 鼠标左键 | 射击 |
+| `左 Shift` | 变身（放大一倍并变圆；此形态下开枪会产生后坐力把角色推飞） |
 
 ## ✅ 当前进度（M0 + M1 可玩骨架）
 
@@ -23,6 +24,7 @@ GitHub Pages 发布后地址：`https://wadany.github.io/mianshi/`
 - [x] 鼠标瞄准，朝鼠标方向射击直线子弹
 - [x] 摄像机横向跟随主角
 - [x] 血条 HUD
+- [x] 左 Shift 变身形态（放大变圆 + 开枪后坐力推飞）
 - [ ] 敌人 AI 与战斗（M2）
 - [ ] 多武器、多关卡、Boss（M3）
 

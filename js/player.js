@@ -4,6 +4,8 @@
 class Player {
   constructor() {
     const p = CONFIG.player;
+    this.baseW = p.width;   // 常态尺寸，切换时以此为基准
+    this.baseH = p.height;
     this.w = p.width;
     this.h = p.height;
     this.x = p.spawnX;
@@ -17,6 +19,10 @@ class Player {
     this.weapon = new Weapon();
     this.aimAngle = 0;
     this._cameraX = 0; // 摄像机偏移，draw 时更新，供瞄准换算
+
+    // 变身形态
+    this.isBlob = false;   // 是否为放大变圆形态
+    this.shiftHeld = false; // 防止按住 Shift 连续切换
   }
 
   get centerX() { return this.x + this.w / 2; }
@@ -25,6 +31,13 @@ class Player {
   update(dt, platforms, bullets) {
     const p = CONFIG.player;
     const phys = CONFIG.physics;
+
+    // --- 左 Shift 切换变身形态（按下瞬间触发一次）---
+    const wantShift = Input.isDown('shift');
+    if (wantShift && !this.shiftHeld) {
+      this.toggleBlob(platforms);
+    }
+    this.shiftHeld = wantShift;
 
     // --- 水平移动 ---
     let dir = 0;
@@ -72,6 +85,39 @@ class Player {
       const muzzleY = this.centerY + Math.sin(this.aimAngle) * 24;
       const newBullets = this.weapon.tryFire(muzzleX, muzzleY, this.aimAngle);
       for (const b of newBullets) bullets.push(b);
+
+      // 变身形态：每成功开一枪，施加与射击方向相反的后坐力冲量（推飞）
+      if (this.isBlob && newBullets.length > 0) {
+        const b = CONFIG.player.blob;
+        this.vx -= Math.cos(this.aimAngle) * b.recoil;
+        this.vy -= Math.sin(this.aimAngle) * b.recoil;
+        // 限制被推飞后的速度上限，避免过于夸张
+        this.vx = clamp(this.vx, -b.recoilMaxSpeed, b.recoilMaxSpeed);
+        this.vy = clamp(this.vy, -b.recoilMaxSpeed, b.recoilMaxSpeed);
+        this.onGround = false; // 让后坐力能把人从地面推起
+      }
+    }
+  }
+
+  // 切换变身形态：以中心为锚缩放尺寸，并做卡墙安全处理
+  toggleBlob(platforms) {
+    const cx = this.centerX;
+    const cy = this.centerY;
+    this.isBlob = !this.isBlob;
+    const scale = this.isBlob ? CONFIG.player.blob.scale : 1;
+    this.w = this.baseW * scale;
+    this.h = this.baseH * scale;
+    // 保持中心不变地重新定位，避免放大后位置偏移
+    this.x = cx - this.w / 2;
+    this.y = cy - this.h / 2;
+    // 世界边界夹取
+    if (this.x < 0) this.x = 0;
+    if (this.x + this.w > CONFIG.world.width) this.x = CONFIG.world.width - this.w;
+    // 放大后若卡进平台，向上顶出，防止穿模
+    for (const pl of platforms) {
+      if (this.overlaps(pl) && this.y + this.h > pl.y && this.y < pl.y) {
+        this.y = pl.y - this.h;
+      }
     }
   }
 
@@ -110,9 +156,16 @@ class Player {
     this._cameraX = cameraX; // 供 update 里瞄准换算用
     const sx = this.x - cameraX;
 
-    // 身体
-    ctx.fillStyle = CONFIG.player.color;
-    ctx.fillRect(sx, this.y, this.w, this.h);
+    // 身体：常态为方块，变身形态为放大的圆形
+    if (this.isBlob) {
+      ctx.beginPath();
+      ctx.arc(sx + this.w / 2, this.y + this.h / 2, this.w / 2, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.player.blob.color;
+      ctx.fill();
+    } else {
+      ctx.fillStyle = CONFIG.player.color;
+      ctx.fillRect(sx, this.y, this.w, this.h);
+    }
 
     // 枪管（朝鼠标方向）
     ctx.save();
