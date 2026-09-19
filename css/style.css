@@ -1,0 +1,46 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: #1a1a2e;
+  color: #e6e6e6;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#game-wrap {
+  position: relative;
+}
+
+#game {
+  display: block;
+  background: #0f3460;
+  border: 2px solid #16213e;
+  border-radius: 6px;
+  /* 关闭图像平滑前的默认外观，像素风更清晰 */
+  image-rendering: pixelated;
+  max-width: 100vw;
+  max-height: 80vh;
+  cursor: crosshair;
+}
+
+#hint {
+  font-size: 14px;
+  color: #9aa0b5;
+  letter-spacing: 0.5px;
+}
+
+#hint b {
+  color: #e6e6e6;
+}

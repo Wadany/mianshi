@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>混乱大枪战 · Web 版</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div id="hint">
+      <b>操作：</b> A/D 移动 · W 或 空格 跳跃 · 鼠标瞄准 · 左键射击
+    </div>
+  </div>
+
+  <!-- 按依赖顺序加载：配置 → 输入 → 武器 → 玩家 → 关卡 → 主循环 -->
+  <script src="js/config.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/weapon.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/level.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
