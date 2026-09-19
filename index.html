@@ -4,20 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>混乱大枪战 · Web 版</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔫</text></svg>" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div id="game-wrap">
     <canvas id="game" width="960" height="540"></canvas>
     <div id="hint">
-      <b>操作：</b> A/D 移动 · W 或 空格 跳跃 · 鼠标瞄准 · 左键射击 · 左Shift 变身(放大变圆，开枪后坐力推飞)
+      <b>操作：</b> A/D 移动 · W/空格 跳跃 · 鼠标瞄准 · 左键射击 · 1/2/3 换武器 · 左Shift 变身(开枪后坐力推飞)
     </div>
   </div>
 
-  <!-- 按依赖顺序加载：配置 → 输入 → 武器 → 玩家 → 关卡 → 主循环 -->
+  <!-- 按依赖顺序加载 -->
   <script src="js/config.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/input.js"></script>
   <script src="js/weapon.js"></script>
+  <script src="js/pickup.js"></script>
+  <script src="js/enemy.js"></script>
   <script src="js/player.js"></script>
   <script src="js/level.js"></script>
   <script src="js/main.js"></script>

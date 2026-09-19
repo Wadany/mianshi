@@ -1,5 +1,5 @@
 /**
- * player.js —— 主角：移动、重力、跳跃、平台碰撞、朝鼠标射击
+ * player.js —— 主角：移动、重力、跳跃、平台碰撞、朝鼠标射击、变身、受伤
  */
 class Player {
   constructor() {
@@ -23,14 +23,32 @@ class Player {
     // 变身形态
     this.isBlob = false;   // 是否为放大变圆形态
     this.shiftHeld = false; // 防止按住 Shift 连续切换
+
+    // 受伤 / 无敌
+    this.invincible = 0;   // 无敌剩余时间
+    this.dead = false;
   }
 
   get centerX() { return this.x + this.w / 2; }
   get centerY() { return this.y + this.h / 2; }
 
+  hurt(dmg) {
+    if (this.invincible > 0 || this.dead) return;
+    this.hp -= dmg;
+    this.invincible = CONFIG.player.invincibleTime;
+    if (this.hp <= 0) { this.hp = 0; this.dead = true; }
+  }
+
   update(dt, platforms, bullets) {
     const p = CONFIG.player;
     const phys = CONFIG.physics;
+
+    if (this.invincible > 0) this.invincible -= dt;
+
+    // --- 武器切换（数字键）---
+    for (const n of ['1', '2', '3']) {
+      if (Input.isDown(n)) this.weapon.switchByNumber(n);
+    }
 
     // --- 左 Shift 切换变身形态（按下瞬间触发一次）---
     const wantShift = Input.isDown('shift');
@@ -43,7 +61,16 @@ class Player {
     let dir = 0;
     if (Input.isDown('a', 'arrowleft')) dir -= 1;
     if (Input.isDown('d', 'arrowright')) dir += 1;
-    this.vx = dir * p.moveSpeed;
+    // 变身后坐力期间保留惯性：无输入时不强行清零水平速度
+    if (dir !== 0) {
+      this.vx = dir * p.moveSpeed;
+    } else if (!this.isBlob) {
+      this.vx = 0;
+    } else {
+      // blob 形态无输入时给阻尼，让后坐力惯性自然衰减
+      this.vx *= 0.92;
+      if (Math.abs(this.vx) < 5) this.vx = 0;
+    }
 
     // --- 跳跃（支持 coyote time）---
     const wantJump = Input.isDown('w', ' ', 'arrowup');
@@ -73,6 +100,9 @@ class Player {
     if (this.x < 0) this.x = 0;
     if (this.x + this.w > CONFIG.world.width) this.x = CONFIG.world.width - this.w;
 
+    // --- 掉出地图（坑）判定：直接死亡 ---
+    if (this.y > CONFIG.canvas.height + 120) { this.hp = 0; this.dead = true; }
+
     // --- 瞄准（世界坐标 = 鼠标屏幕坐标 + 摄像机偏移）---
     const worldMouseX = Input.mouse.x + this._cameraX;
     const worldMouseY = Input.mouse.y;
@@ -91,12 +121,13 @@ class Player {
         const b = CONFIG.player.blob;
         this.vx -= Math.cos(this.aimAngle) * b.recoil;
         this.vy -= Math.sin(this.aimAngle) * b.recoil;
-        // 限制被推飞后的速度上限，避免过于夸张
         this.vx = clamp(this.vx, -b.recoilMaxSpeed, b.recoilMaxSpeed);
         this.vy = clamp(this.vy, -b.recoilMaxSpeed, b.recoilMaxSpeed);
         this.onGround = false; // 让后坐力能把人从地面推起
       }
+      return newBullets.length > 0; // 供音效判断是否真的开了枪
     }
+    return false;
   }
 
   // 切换变身形态：以中心为锚缩放尺寸，并做卡墙安全处理
@@ -107,13 +138,10 @@ class Player {
     const scale = this.isBlob ? CONFIG.player.blob.scale : 1;
     this.w = this.baseW * scale;
     this.h = this.baseH * scale;
-    // 保持中心不变地重新定位，避免放大后位置偏移
     this.x = cx - this.w / 2;
     this.y = cy - this.h / 2;
-    // 世界边界夹取
     if (this.x < 0) this.x = 0;
     if (this.x + this.w > CONFIG.world.width) this.x = CONFIG.world.width - this.w;
-    // 放大后若卡进平台，向上顶出，防止穿模
     for (const pl of platforms) {
       if (this.overlaps(pl) && this.y + this.h > pl.y && this.y < pl.y) {
         this.y = pl.y - this.h;
@@ -121,7 +149,6 @@ class Player {
     }
   }
 
-  // 水平碰撞：撞到平台侧面就贴边
   resolveHorizontal(platforms) {
     for (const pl of platforms) {
       if (this.overlaps(pl)) {
@@ -132,16 +159,11 @@ class Player {
     }
   }
 
-  // 垂直碰撞：落到平台上或顶到平台底
   resolveVertical(platforms) {
     for (const pl of platforms) {
       if (this.overlaps(pl)) {
-        if (this.vy > 0) {          // 下落中，踩到平台顶
-          this.y = pl.y - this.h;
-          this.onGround = true;
-        } else if (this.vy < 0) {   // 上升中，顶到平台底
-          this.y = pl.y + pl.h;
-        }
+        if (this.vy > 0) { this.y = pl.y - this.h; this.onGround = true; }
+        else if (this.vy < 0) this.y = pl.y + pl.h;
         this.vy = 0;
       }
     }
@@ -153,26 +175,29 @@ class Player {
   }
 
   draw(ctx, cameraX) {
-    this._cameraX = cameraX; // 供 update 里瞄准换算用
+    this._cameraX = cameraX;
     const sx = this.x - cameraX;
 
-    // 身体：常态为方块，变身形态为放大的圆形
-    if (this.isBlob) {
-      ctx.beginPath();
-      ctx.arc(sx + this.w / 2, this.y + this.h / 2, this.w / 2, 0, Math.PI * 2);
-      ctx.fillStyle = CONFIG.player.blob.color;
-      ctx.fill();
-    } else {
-      ctx.fillStyle = CONFIG.player.color;
-      ctx.fillRect(sx, this.y, this.w, this.h);
+    // 受伤无敌时闪烁
+    if (this.invincible > 0 && Math.floor(this.invincible * 20) % 2 === 0) {
+      ctx.globalAlpha = 0.4;
     }
+
+    if (this.isBlob) {
+      ctx.drawImage(Sprites.cache.blob, sx, this.y, this.w, this.h);
+    } else {
+      ctx.drawImage(Sprites.cache.player, sx, this.y, this.w, this.h);
+    }
+    ctx.globalAlpha = 1;
 
     // 枪管（朝鼠标方向）
     ctx.save();
     ctx.translate(sx + this.w / 2, this.y + this.h / 2);
     ctx.rotate(this.aimAngle);
-    ctx.fillStyle = '#333';
-    ctx.fillRect(0, -4, 34, 8);
+    ctx.fillStyle = '#2b2b2b';
+    ctx.fillRect(0, -3, this.isBlob ? 44 : 34, 7);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(0, -3, 8, 7);
     ctx.restore();
   }
 }

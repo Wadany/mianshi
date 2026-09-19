@@ -4,7 +4,7 @@
  */
 const Input = {
   keys: {},              // 当前按下的键：{ 'a': true, ... }
-  mouse: { x: 0, y: 0 }, // 鼠标在画布内的坐标
+  mouse: { x: 700, y: 300 }, // 鼠标在画布内的坐标（默认朝右前方，避免未移动鼠标时朝左上）
   mouseDown: false,      // 左键是否按住
 
   init(canvas) {
